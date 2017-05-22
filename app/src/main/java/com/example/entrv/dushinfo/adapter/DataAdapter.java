@@ -61,6 +61,7 @@ public class DataAdapter extends RecyclerView.Adapter<DataAdapter.ViewHolder> {
         holder.o3value.setText(mAndroidList.get(position).getO3Value() +"ppm");
         holder.no2value.setText(mAndroidList.get(position).getNo2Value()+"ppm");
         holder.pm10value.setText(mAndroidList.get(position).getPm10Value()+"μg/m³");
+        setTextViewBackgroundColor(holder.so2value, mAndroidList.get(position).getPm10Value() ,"μg/m³");
         holder.khaivalue.setText(mAndroidList.get(position).getKhaiValue());
         holder.khaigrade.setText(mAndroidList.get(position).getKhaiGrade());
         holder.so2grade.setText(transGrade(mAndroidList.get(position).getSo2Grade()));
