@@ -12,7 +12,7 @@
 
     <LinearLayout
         android:layout_width="368dp"
-        android:layout_height="159dp"
+        android:layout_height="wrap_content"
         android:layout_weight="1"
         tools:layout_editor_absoluteX="8dp"
         android:id="@+id/linearLayout2"
@@ -43,7 +43,7 @@
 
     <LinearLayout
         android:layout_width="370dp"
-        android:layout_height="160dp"
+        android:layout_height="60dp"
         android:layout_weight="1"
         android:orientation="horizontal"
         tools:layout_editor_absoluteX="7dp"
@@ -54,23 +54,22 @@
         <Spinner
             android:id="@+id/sido"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="#0f000000"></Spinner>
+            android:background="@android:drawable/btn_dropdown"></Spinner>
 
         <Spinner
             android:id="@+id/station"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="#0f000000"></Spinner>
+            android:background="@android:drawable/btn_dropdown"></Spinner>
 
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="0dp"
-        android:layout_height="160dp"
-        android:layout_marginTop="8dp"
+        android:layout_height="0dp"
         android:layout_weight="1"
         android:orientation="vertical"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -79,11 +78,21 @@
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/linearLayout"
         app:layout_constraintVertical_bias="0.468">
-
+        <TextView
+            android:id="@+id/empty_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:visibility="visible"
+            android:text="여기에 나타납니다."
+            android:textColor="#580a0a"/>
         <android.support.v7.widget.RecyclerView
             android:id="@+id/recycler_view"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="match_parent"
+
+            />
+
     </LinearLayout>
 
 </android.support.constraint.ConstraintLayout>

@@ -24,10 +24,14 @@ import com.example.entrv.dushinfo.model.dustrealtime.DustrealtimeInfo;
 import com.example.entrv.dushinfo.network.MsrstnInfoInterface;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
@@ -39,7 +43,9 @@ import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener,AdapterView.OnItemSelectedListener,
-        GoogleApiClient.OnConnectionFailedListener,GoogleApiClient.ConnectionCallbacks{
+        GoogleApiClient.OnConnectionFailedListener,GoogleApiClient.ConnectionCallbacks,
+        LocationListener
+{
     //측정소별 실시간 측정정보 조회
     //http://openapi.airkorea.or.kr/openapi/services/rest/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty?stationName=평리동&dataTerm=month&pageNo=1&numOfRows=10&ServiceKey=OKt6Cg7BORv%2BMXEq%2FTGWZNp9efdv3fqcsWLLLdfhrQCqnn6Ww%2BtmgelpRgNwUwMFF%2BdO1BI7svGpcExzogsLqw%3D%3D&_returnType=json
     public static final String BASE_URL = "http://openapi.airkorea.or.kr/";
@@ -64,6 +70,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     GoogleApiClient mGoogleApiClient;
     Location mLastLocation;
     private final int REQUEST_PERMISSION = 10;
+
+    private LocationRequest locationRequest;
+    private Location location;
+    private long lastLocationTime = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -93,6 +103,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 .addOnConnectionFailedListener(this)
                 .addApi(LocationServices.API)
                 .build();
+
+        locationRequest = LocationRequest.create();
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        locationRequest.setInterval(1000);
+        locationRequest.setFastestInterval(16);
     }
 
     // permission check
@@ -246,6 +261,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mRecyclerView.setHasFixedSize(true);
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(getApplicationContext());
         mRecyclerView.setLayoutManager(layoutManager);
+
     }
 
     public void getFindDust(String name){	//이건 미세먼지 보기 정보가져올 스레드
@@ -336,6 +352,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mAndroidArrayList = new ArrayList<>(dustrealtimeInfo.getList());
         mAdapter = new DataAdapter(mAndroidArrayList);
         mRecyclerView.setAdapter(mAdapter);
+
     }
 
 
@@ -354,11 +371,37 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
             Log.d("mLastLocation", String.valueOf(mLastLocation.getLatitude()) + "," + mLastLocation.getLongitude());
-            if (mLastLocation != null) {
-                //totalcnt.setText(String.valueOf(mLastLocation.getLatitude()) + "," + mLastLocation.getLongitude());
-                getStation(mLastLocation.getLatitude(), mLastLocation.getLongitude());
+            if (mLastLocation != null && mLastLocation.getTime() > 20000) {
+                if (mLastLocation != null) {
+                    //totalcnt.setText(String.valueOf(mLastLocation.getLatitude()) + "," + mLastLocation.getLongitude());
+                    getStation(mLastLocation.getLatitude(), mLastLocation.getLongitude());
+                } else {
+                    //totalcnt.setText("위치를 알 수 없습니다.");
+                    Toast.makeText(getApplication(), "위치를 알 수 없습니다.", Toast.LENGTH_SHORT).show();
+                }
             } else {
-                //totalcnt.setText("위치를 알 수 없습니다.");
+                // 백그라운드에서 돌아 버리면 예외가 발생할 수있다
+                try {
+                    //
+                    LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, locationRequest, this);
+                    // Schedule a Thread to unregister location listeners
+                    Executors.newScheduledThreadPool(1).schedule(new Runnable() {
+                        @Override
+                        public void run() {
+                            LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, MainActivity.this);
+                        }
+                    }, 60000, TimeUnit.MILLISECONDS);
+
+                   // "onConnected(), requestLocationUpdates \n";
+
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Toast toast = Toast.makeText(this, "예외가 발생 위치 정보의 Permission를 허용합니까?", Toast.LENGTH_SHORT);
+                    toast.show();
+
+
+                }
             }
             mGoogleApiClient.disconnect();
         }
@@ -387,6 +430,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onConnectionFailed(ConnectionResult connectionResult) {
 
     }
+
+    @Override
+    public void onLocationChanged(Location location) {
+        lastLocationTime = location.getTime() - lastLocationTime;
+        String textLog = "";
+        textLog += "---------- onLocationChanged \n";
+        textLog += "Latitude=" + String.valueOf(location.getLatitude()) + "\n";
+        textLog += "Longitude=" + String.valueOf(location.getLongitude()) + "\n";
+        textLog += "Accuracy=" + String.valueOf(location.getAccuracy()) + "\n";
+        textLog += "Altitude=" + String.valueOf(location.getAltitude()) + "\n";
+        textLog += "Time=" + String.valueOf(location.getTime()) + "\n";
+        textLog += "Speed=" + String.valueOf(location.getSpeed()) + "\n";
+        textLog += "Bearing=" + String.valueOf(location.getBearing()) + "\n";
+        textLog += "time= " + String.valueOf(lastLocationTime) + " msec \n";
+        //textView.setText(textLog);
+        Toast.makeText(getApplication(), "onLocationChanged", Toast.LENGTH_SHORT).show();
+    }
+
+
     @Override
     public void onDestroy() {
         super.onDestroy();
