@@ -64,7 +64,7 @@ public class DataAdapter extends RecyclerView.Adapter<DataAdapter.ViewHolder> {
         holder.khaivalue.setText(mAndroidList.get(position).getKhaiValue());
         holder.khaigrade.setText(mAndroidList.get(position).getKhaiGrade());
         holder.so2grade.setText(transGrade(mAndroidList.get(position).getSo2Grade()));
-        holder.covalue.setText(mAndroidList.get(position).getCoValue());
+        holder.cograde.setText(transGrade(mAndroidList.get(position).getCoGrade()) );
         holder.o3grade.setText(transGrade(mAndroidList.get(position).getO3Grade()) );
         holder.no2grade.setText(transGrade(mAndroidList.get(position).getNo2Grade()) );
         holder.pm10grade.setText(transGrade(mAndroidList.get(position).getPm10Grade()));
