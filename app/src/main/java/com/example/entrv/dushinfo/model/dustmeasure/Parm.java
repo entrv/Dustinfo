@@ -1,10 +1,10 @@
 
-package com.example.entrv.dushinfo.model;
+package com.example.entrv.dushinfo.model.dustmeasure;
 
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
-public class List {
+public class Parm {
 
     @SerializedName("_returnType")
     @Expose

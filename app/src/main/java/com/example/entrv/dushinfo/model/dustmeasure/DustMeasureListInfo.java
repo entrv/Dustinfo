@@ -1,5 +1,5 @@
 
-package com.example.entrv.dushinfo.model;
+package com.example.entrv.dushinfo.model.dustmeasure;
 
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
@@ -11,7 +11,7 @@ public class DustMeasureListInfo {
     private MsrstnInfoInqireSvrVo msrstnInfoInqireSvrVo;
     @SerializedName("list")
     @Expose
-    private java.util.List<com.example.entrv.dushinfo.model.List> list = null;
+    private java.util.List<List> list = null;
     @SerializedName("parm")
     @Expose
     private Parm parm;
@@ -27,11 +27,11 @@ public class DustMeasureListInfo {
         this.msrstnInfoInqireSvrVo = msrstnInfoInqireSvrVo;
     }
 
-    public java.util.List<com.example.entrv.dushinfo.model.List> getList() {
+    public java.util.List<List> getList() {
         return list;
     }
 
-    public void setList(java.util.List<com.example.entrv.dushinfo.model.List> list) {
+    public void setList(java.util.List<List> list) {
         this.list = list;
     }
 

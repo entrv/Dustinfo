@@ -7,7 +7,6 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import com.example.entrv.dushinfo.R;
-import com.example.entrv.dushinfo.model.DustMeasureListInfo;
 
 import java.util.ArrayList;
 
@@ -16,9 +15,9 @@ import java.util.ArrayList;
  */
 
 public class DataAdapter extends RecyclerView.Adapter<DataAdapter.ViewHolder> {
-    private ArrayList<com.example.entrv.dushinfo.model.List> mAndroidList;
+    private ArrayList<com.example.entrv.dushinfo.model.dustrealtime.List> mAndroidList;
 
-    public DataAdapter(ArrayList<com.example.entrv.dushinfo.model.List> dustMeasureListInfo) {
+    public DataAdapter(ArrayList<com.example.entrv.dushinfo.model.dustrealtime.List> dustMeasureListInfo) {
         mAndroidList = dustMeasureListInfo;
     }
 
@@ -32,9 +31,9 @@ public class DataAdapter extends RecyclerView.Adapter<DataAdapter.ViewHolder> {
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
 
-        holder.mTvStationName.setText(mAndroidList.get(position).getStationName());
-        holder.mTvAddr.setText(mAndroidList.get(position).getAddr());
-        holder.mTvYear.setText(mAndroidList.get(position).getYear());
+        holder.mTvStationName.setText(mAndroidList.get(position).getMangName());
+        holder.mTvAddr.setText(mAndroidList.get(position).getDataTime());
+        holder.mTvYear.setText(mAndroidList.get(position).getSo2Value()); //아황산가스 농도
     }
 
 

@@ -1,26 +1,33 @@
 package com.example.entrv.dushinfo;
 
-import android.content.DialogInterface;
-import android.support.v7.app.AppCompatActivity;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.os.Build;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
+import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.Toast;
 
 import com.example.entrv.dushinfo.adapter.DataAdapter;
-import com.example.entrv.dushinfo.model.DustMeasureListInfo;
+import com.example.entrv.dushinfo.model.dustmeasure.DustMeasureListInfo;
+import com.example.entrv.dushinfo.model.dustnearby.Dustnearbyinfo;
+import com.example.entrv.dushinfo.model.dustrealtime.DustrealtimeInfo;
 import com.example.entrv.dushinfo.network.MsrstnInfoInterface;
-
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationServices;
 
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
@@ -28,33 +35,35 @@ import io.reactivex.schedulers.Schedulers;
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Retrofit;
-
-
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
 
-import static com.example.entrv.dushinfo.R.id.where;
-
-public class MainActivity extends AppCompatActivity implements View.OnClickListener,AdapterView.OnItemSelectedListener {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener,AdapterView.OnItemSelectedListener,
+        GoogleApiClient.OnConnectionFailedListener,GoogleApiClient.ConnectionCallbacks{
     //측정소별 실시간 측정정보 조회
     //http://openapi.airkorea.or.kr/openapi/services/rest/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty?stationName=평리동&dataTerm=month&pageNo=1&numOfRows=10&ServiceKey=OKt6Cg7BORv%2BMXEq%2FTGWZNp9efdv3fqcsWLLLdfhrQCqnn6Ww%2BtmgelpRgNwUwMFF%2BdO1BI7svGpcExzogsLqw%3D%3D&_returnType=json
     public static final String BASE_URL = "http://openapi.airkorea.or.kr/";
+
     private RecyclerView mRecyclerView;
 
     private CompositeDisposable mCompositeDisposable;
 
     private DataAdapter mAdapter;
 
-    private ArrayList<com.example.entrv.dushinfo.model.List> mAndroidArrayList;
+    private ArrayList<com.example.entrv.dushinfo.model.dustrealtime.List> mAndroidArrayList;
 
-    private static OkHttpClient client;
+
 
     static EditText where;
     static Spinner sido,station;	//스피너
     static String sidolist[]={"서울","부산","대전","대구","광주","울산","경기","강원","충북","충남","경북","경남","전북","전남","제주"};
     static String stationlist[];	//측정소목록(이건 api로 가져올꺼라 몇개인지 모른다)
     static ArrayAdapter<String> spinnerSido,spinnerStation;	//spinner에 붙일 array adapter
+    static Button getNearStation, getBtn;
 
+    GoogleApiClient mGoogleApiClient;
+    Location mLastLocation;
+    private final int REQUEST_PERMISSION = 10;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,6 +76,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void init() {
+
         where=(EditText)findViewById(R.id.where);
         sido=(Spinner)findViewById(R.id.sido);	//시도 스피너
         station=(Spinner)findViewById(R.id.station);	//측정소 스피너
@@ -74,8 +84,100 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         station.setOnItemSelectedListener(this);
         spinnerSido=new ArrayAdapter<>(getApplication(), R.layout.spinner_text,sidolist);	//array adapter에 시도 리스트를 넣어줌
         sido.setAdapter(spinnerSido);	//스피너에 adapter를 연결
+        getNearStation = (Button) findViewById(R.id.getNearStation);
+        getNearStation.setOnClickListener(this);
+        getBtn = (Button) findViewById(R.id.getBtn);
+        getBtn.setOnClickListener(this);
+        mGoogleApiClient = new GoogleApiClient.Builder(this)	//google service
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .addApi(LocationServices.API)
+                .build();
     }
 
+    // permission check
+    public void checkPermission() {
+
+        // 허가 여부
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION)== PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION)== PackageManager.PERMISSION_GRANTED){
+            locationActivity();
+        }
+        // 아니면
+        else{
+            requestLocationPermission();
+        }
+    }
+
+    // 허가를 구하는
+    private void requestLocationPermission() {
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                android.Manifest.permission.ACCESS_FINE_LOCATION)) {
+            ActivityCompat.requestPermissions(MainActivity.this,
+                    new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_PERMISSION);
+
+        } else {
+            Toast toast = Toast.makeText(this, "허가되지 않았고 애플리가 실행되지 않았습니다.", Toast.LENGTH_SHORT);
+            toast.show();
+
+            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION,}, REQUEST_PERMISSION);
+
+        }
+    }
+
+    // 결과의 수용
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        if (requestCode == REQUEST_PERMISSION) {
+            // 使用が許可された
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                locationActivity();
+                return;
+
+            } else {
+                // 그래도 거부되었을 때의 대응
+                Toast toast = Toast.makeText(this, "더 이상 아무것도 할 수 없습니다", Toast.LENGTH_SHORT);
+                toast.show();
+            }
+        }
+    }
+
+    private void locationActivity() {
+        Log.d("entrv","locationActivity");
+        mGoogleApiClient.connect();
+    }
+
+    public  void getNearStation(double yGrid,double xGrid){	//이건 측정소 정보가져올 스레드
+/*
+        OkHttpClient httpClient = new OkHttpClient.Builder()
+
+                //here we can add Interceptor for dynamical adding headers
+                .addNetworkInterceptor(new Interceptor() {
+                    @Override
+                    public Response intercept(Chain chain) throws IOException {
+                        Request request = chain.request().newBuilder().addHeader("test", "test").build();
+                        return chain.proceed(request);
+                    }
+                })
+                //here we adding Interceptor for full level logging
+                .addNetworkInterceptor(new HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
+                .build();
+        */
+
+        MsrstnInfoInterface requestInterface = new Retrofit.Builder()
+                .baseUrl(BASE_URL)
+                //.client(httpClient)
+                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+                .addConverterFactory(GsonConverterFactory.create())
+                .build().create(MsrstnInfoInterface.class);
+
+        mCompositeDisposable.add(requestInterface.getNearbyMsrstnList(xGrid, yGrid, String.valueOf("1"),String.valueOf("100"))
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeOn(Schedulers.io())
+                .subscribe(this::ResponseNearbyMsrstnList, this::handleError));
+
+
+    }
     public void onClick(View v) {
 
         switch(v.getId()){
@@ -83,11 +185,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.getBtn:	//대기정보 가져오는 버튼
                 String stationName;
                 stationName=where.getText().toString();
-                //getFindDust(stationName);
+                Log.d("entrv","getFindDust:" + stationName);
+                getFindDust(stationName);
 
                 break;
             case R.id.getNearStation:
-                //mGoogleApiClient.connect();
+                if(Build.VERSION.SDK_INT >= 23){
+                    checkPermission();
+                }
+                else{
+                    locationActivity();
+                }
+
+                //
                 break;
             default:
                 break;
@@ -138,6 +248,26 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mRecyclerView.setLayoutManager(layoutManager);
     }
 
+    public void getFindDust(String name){	//이건 미세먼지 보기 정보가져올 스레드
+                //GetStationListThread.active=true;
+        //GetStationListThread getstationthread=new GetStationListThread(false,name);		//스레드생성(UI 스레드사용시 system 뻗는다)
+        //getstationthread.start();	//스레드 시작
+
+
+
+        MsrstnInfoInterface requestInterface = new Retrofit.Builder()
+                .baseUrl(BASE_URL)
+                //.client(httpClient.build())
+                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+                .addConverterFactory(GsonConverterFactory.create())
+                .build().create(MsrstnInfoInterface.class);
+
+        mCompositeDisposable.add(requestInterface.getMsrstnAcctoRltmMesureDnsty(name,String.valueOf("1"),String.valueOf("100"))
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeOn(Schedulers.io())
+                .subscribe(this::ResponseMsrstnAcctoRltmMesureDnsty, this::handleError));
+    }
+
 
     public void getStationList(String name){	//이건 측정소 정보가져올 스레드
         //GetStationListThread.active=true;
@@ -177,16 +307,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void handleResponse(DustMeasureListInfo dustMeasureListInfo) {
 
-        mAndroidArrayList = new ArrayList<>(dustMeasureListInfo.getList());
-        mAdapter = new DataAdapter(mAndroidArrayList);
-        mRecyclerView.setAdapter(mAdapter);
-
-
         stationlist=new String[dustMeasureListInfo.getTotalCount()];
-        Iterator<com.example.entrv.dushinfo.model.List> iterator = dustMeasureListInfo.getList().iterator();
+        Iterator<com.example.entrv.dushinfo.model.dustmeasure.List> iterator = dustMeasureListInfo.getList().iterator();
         int data = 0;
         while (iterator.hasNext()) {
-            com.example.entrv.dushinfo.model.List element = iterator.next();
+            com.example.entrv.dushinfo.model.dustmeasure.List element = iterator.next();
             stationlist[data] = element.getStationName();
             data++;
         }
@@ -198,15 +323,74 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         //}
 
     }
+    private void ResponseNearbyMsrstnList(Dustnearbyinfo dustnearbyinfo) {
+         ArrayList<com.example.entrv.dushinfo.model.dustnearby.List> mAndroidArrayList =
+                 new ArrayList<>(dustnearbyinfo.getList());
+        Log.d("entrv","ResponseNearbyMsrstnList=>" + mAndroidArrayList.get(0).getStationName() );
+        where.setText(mAndroidArrayList.get(0).getStationName());	//측정소이름을 바로 입력해 준다.
+
+
+
+    }
+    private void ResponseMsrstnAcctoRltmMesureDnsty(DustrealtimeInfo dustrealtimeInfo) {
+        mAndroidArrayList = new ArrayList<>(dustrealtimeInfo.getList());
+        mAdapter = new DataAdapter(mAndroidArrayList);
+        mRecyclerView.setAdapter(mAdapter);
+    }
+
 
     private void handleError(Throwable error) {
 
         Toast.makeText(this, "Error " + error.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
     }
 
+
+    @Override
+    public void onConnected(Bundle bundle) {
+
+// 허가 여부
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION)== PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION)== PackageManager.PERMISSION_GRANTED) {
+
+            mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+            Log.d("mLastLocation", String.valueOf(mLastLocation.getLatitude()) + "," + mLastLocation.getLongitude());
+            if (mLastLocation != null) {
+                //totalcnt.setText(String.valueOf(mLastLocation.getLatitude()) + "," + mLastLocation.getLongitude());
+                getStation(mLastLocation.getLatitude(), mLastLocation.getLongitude());
+            } else {
+                //totalcnt.setText("위치를 알 수 없습니다.");
+            }
+            mGoogleApiClient.disconnect();
+        }
+
+    }
+    void getStation(double lat,double lng){
+
+        if(lat != 0 && lng != 0){
+            GeoPoint in_pt = new GeoPoint( lng, lat);
+            System.out.println("geo in : xGeo="  + in_pt.getX() + ", yGeo=" + in_pt.getY());
+            GeoPoint tm_pt = GeoTrans.convert(GeoTrans.GEO, GeoTrans.TM, in_pt);
+            System.out.println("tm : xTM=" + tm_pt.getX() + ", yTM=" + tm_pt.getY());
+            getNearStation(tm_pt.getY(), tm_pt.getX());
+        }else{
+            Toast.makeText(getApplication(), "좌표값 잘못 되었습니다.", Toast.LENGTH_SHORT).show();
+        }
+
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+
+    }
+
+    @Override
+    public void onConnectionFailed(ConnectionResult connectionResult) {
+
+    }
     @Override
     public void onDestroy() {
         super.onDestroy();
         mCompositeDisposable.clear();
     }
+
 }

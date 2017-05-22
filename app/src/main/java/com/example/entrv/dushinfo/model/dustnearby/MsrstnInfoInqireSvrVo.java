@@ -1,10 +1,10 @@
 
-package com.example.entrv.dushinfo.model;
+package com.example.entrv.dushinfo.model.dustnearby;
 
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
-public class Parm {
+public class MsrstnInfoInqireSvrVo {
 
     @SerializedName("_returnType")
     @Expose
